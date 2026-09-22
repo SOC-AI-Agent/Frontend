@@ -1,0 +1,60 @@
+# Frontend — the analyst dashboard.
+#
+# No .env: the proxy targets are baked into nginx.conf at build time, so the
+# image is the configuration and nothing here holds a secret.
+
+stages:
+  - build
+  - test
+  - deploy
+
+default:
+  tags:
+    - llm
+
+variables:
+  DOCKER_HOST: unix:///var/run/docker.sock
+  DOCKER_TLS_CERTDIR: ""
+
+build_image:
+  stage: build
+  image: docker:latest
+  script:
+    - docker build -t soc-frontend:${CI_COMMIT_SHORT_SHA} .
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+
+code_test:
+  stage: test
+  image: node:20
+  script:
+    - npm ci
+    # A build failure here is a blank dashboard in production, and it is the
+    # only check that catches a bad import before then.
+    - npm run build
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+
+deploy_production:
+  stage: deploy
+  image: docker:latest
+  environment:
+    name: production
+    # The address GitLab shows and links to. It is where the service actually
+    # answers, so it comes from a variable — localhost here would be a link to
+    # the runner, which is not where anyone reads this from.
+    url: ${FRONTEND_URL}
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - echo "========== Build and start =========="
+    - docker compose up -d --build --wait
+    - echo "========== Serving =========="
+    - |
+      for i in $(seq 1 20); do
+        if docker compose exec -T soc-frontend wget -q -O /dev/null http://localhost/ 2>/dev/null; then
+          echo "serving"; exit 0
+        fi
+        sleep 3
+      done
+      echo "the dashboard did not start"; docker compose logs --tail 40 soc-frontend; exit 1
