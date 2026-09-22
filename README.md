@@ -28,6 +28,28 @@ to `soc-llm-server`, so the browser talks to one origin. `/llm` carries a 900s
 read timeout: nginx gives up at 60s by default, which is shorter than a single
 CPU-only agent run, and a cut-off request looks like the LLM server died.
 
+## Running the whole stack
+
+This repo runs on its own with the compose file above, which is enough to work
+on it. Running the SOC end to end takes all five repos, checked out side by
+side, and one script that writes the `.env` files:
+
+```bash
+git clone https://gitlab.com/agentic-soc/backend.git     Backend
+git clone https://gitlab.com/agentic-soc/frontend.git    Frontend
+git clone https://gitlab.com/agentic-soc/ai-service.git  AI-Service
+git clone https://gitlab.com/agentic-soc/llm-server.git  LLM-Server
+git clone https://gitlab.com/agentic-soc/mcp-server.git  MCP-Server
+
+cd Backend
+./deploy/dev-setup.sh                            # writes .env in all four
+docker compose -f deploy/dev.yml up -d --build   # http://localhost:3000
+```
+
+The script lives in Backend because three of the secrets it generates have to
+be identical in more than one repo — the tokens the connectors check — and
+they are the ones that break quietly: a mismatch is a 401 with nothing saying
+why. Generating them in one place is the whole point.
 
 ---
 
