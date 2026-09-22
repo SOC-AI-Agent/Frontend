@@ -1,0 +1,20 @@
+# The analyst dashboard.
+#
+#   docker compose up -d --build     # http://localhost:3000
+#
+# nginx proxies /auth, /v1, /admin and /health to soc-core-api, and /llm to
+# soc-llm-server, so the browser stays on one origin and there is no CORS to
+# configure. Both must be reachable on soc-network or those paths 502.
+
+services:
+  soc-frontend:
+    build: .
+    container_name: soc-frontend
+    ports: ["3000:80"]
+    restart: unless-stopped
+    networks: [soc-network]
+
+networks:
+  soc-network:
+    name: soc-network
+    driver: bridge
