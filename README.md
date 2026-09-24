@@ -3,7 +3,7 @@
 The analyst dashboard. React and Vite, served by nginx.
 
 ```bash
-docker compose up -d --build     # http://localhost:3000
+docker compose up -d --build     # http://localhost:3001
 ```
 
 ## What it shows
@@ -43,7 +43,7 @@ git clone https://gitlab.com/agentic-soc/mcp-server.git  MCP-Server
 
 cd Backend
 ./deploy/dev-setup.sh                            # writes .env in all four
-docker compose -f deploy/dev.yml up -d --build   # http://localhost:3000
+docker compose -f deploy/dev.yml up -d --build   # http://localhost:3001
 ```
 
 The script lives in Backend because three of the secrets it generates have to

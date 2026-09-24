@@ -1,6 +1,6 @@
 # The analyst dashboard.
 #
-#   docker compose up -d --build     # http://localhost:3000
+#   docker compose up -d --build     # http://localhost:3001
 #
 # nginx proxies /auth, /v1, /admin and /health to soc-core-api, and /llm to
 # soc-llm-server, so the browser stays on one origin and there is no CORS to
@@ -10,7 +10,7 @@ services:
   soc-frontend:
     build: .
     container_name: soc-frontend
-    ports: ["3000:80"]
+    ports: ["3001:80"]
     restart: unless-stopped
     networks: [soc-network]
 

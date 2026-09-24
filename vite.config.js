@@ -6,10 +6,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/auth': 'http://localhost:8000',
-      '/v1': 'http://localhost:8000',
-      '/admin': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/auth': 'http://localhost:8081',
+      '/v1': 'http://localhost:8081',
+      '/admin': 'http://localhost:8081',
+      '/health': 'http://localhost:8081',
       // The LLM server, for the agent run trace. Rewritten because the path is
       // only a prefix on this side — /llm/runs/x is /runs/x over there.
       '/llm': {
