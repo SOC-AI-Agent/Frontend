@@ -59,7 +59,7 @@ deploy_production:
     # The address GitLab shows and links to. It is where the service actually
     # answers, so it comes from a variable — localhost here would be a link to
     # the runner, which is not where anyone reads this from.
-    url: ${FRONTEND_URL}
+    url: '$FRONTEND_URL'
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
