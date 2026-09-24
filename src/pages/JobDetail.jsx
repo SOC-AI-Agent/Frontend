@@ -14,7 +14,8 @@ const LOOKUP_NOTE = {
   not_requested: 'Not searched yet. Nothing has been run against Splunk for this alert.',
   queued: 'Queued — waiting for the worker. The button returns when it finishes.',
   running: 'Searching Splunk now, one requirement at a time. Answers appear below as each '
-    + 'finishes; each is a separate agent run and takes minutes. The button returns when it is done.',
+    + 'finishes; when the last is in, an agent reads them and writes the analysis. '
+    + 'The button returns when it is done.',
   completed: 'Searched.',
   failed: 'The last run did not finish. Press the button to run it again.',
 }
@@ -186,6 +187,7 @@ export default function JobDetail() {
               {/* Progress, not just "working". Ten minutes of an unchanging
                   page reads as a hang; "2 of 4 done" reads as a queue. */}
               {busyLookup && done > 0 && ` — ${done} of ${job.splunk_requirements.length} done`}
+              {job.final_analysis?.status === 'running' && ' — reading the results'}
               {job.lookup_time_ms != null && ` · ${(job.lookup_time_ms / 1000).toFixed(1)}s`}
             </p>
           )}
@@ -201,7 +203,11 @@ export default function JobDetail() {
             <div style={{ marginTop: 14 }}>
               {job.lookup_result.map((a, i) => (
                 <div key={i} style={{ borderTop: '1px solid var(--border-subtle)', padding: '12px 0' }}>
-                  <div style={{ fontSize: 13, fontStyle: 'italic', marginBottom: 2 }}>{a.requirement}</div>
+                  <div style={{ fontSize: 13, fontStyle: 'italic', marginBottom: 2 }}>
+                    {/* The number the analysis below cites: [splunk N]. */}
+                    <span className="td-mono" style={{ fontStyle: 'normal', marginRight: 6 }}>[{i + 1}]</span>
+                    {a.requirement}
+                  </div>
                   <div className="text-muted" style={{ fontSize: 11, marginBottom: 6 }}>
                     {a.fields?.length
                       ? `searched ${a.fields.join(' / ')}${a.index ? ` in ${a.index}` : ''}${a.sourcetype ? `/${a.sourcetype}` : ''}`
@@ -217,6 +223,67 @@ export default function JobDetail() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* The second reading: the suggestion and the Splunk results read together by an
+          agent with no tools. Kept beside the numbered results it cites, so a claim
+          can be walked back to the search that made it. */}
+      {job.final_analysis && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <span className="card-title">🧾 Analysis with Splunk evidence</span>
+            {job.final_analysis.status === 'completed' && (
+              <button className="btn btn-ghost btn-sm" onClick={() => copy(job.final_analysis.text)}>⎘ Copy</button>
+            )}
+          </div>
+
+          {job.final_analysis.status === 'running' && (
+            <p className="text-muted" style={{ fontSize: 13 }}>
+              <span className="spinner" style={{ marginRight: 8 }} />
+              An agent is reading the results beside the first reading. This is a model call, so it takes a while.
+            </p>
+          )}
+          {job.final_analysis.status === 'skipped' && (
+            <p className="text-muted" style={{ fontSize: 13 }}>{job.final_analysis.reason}</p>
+          )}
+          {job.final_analysis.status === 'failed' && (
+            <div className="alert alert-error">
+              The analysis did not finish: {job.final_analysis.error}. The results above are still good.
+            </div>
+          )}
+          {job.final_analysis.status === 'completed' && (
+            <>
+              <div className="code-block">{job.final_analysis.text}</div>
+              <p className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
+                Written from {job.final_analysis.resultsUsed} result{job.final_analysis.resultsUsed === 1 ? '' : 's'}
+                {job.final_analysis.model && <> by <span className="td-mono">{job.final_analysis.model}</span></>}
+                {job.final_analysis.durationMs != null && <> in {(job.final_analysis.durationMs / 1000).toFixed(1)}s</>}
+                . It cannot search; it only reads what is above.
+              </p>
+              {job.lookup_result?.length > 0 && (
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 12 }}>
+                    The results it rests on ({job.lookup_result.length})
+                  </summary>
+                  <ol style={{ margin: '8px 0 0 18px', fontSize: 12, lineHeight: 1.7 }}>
+                    {job.lookup_result.map((a, i) => (
+                      <li key={i}>
+                        <span className="td-mono">[{i + 1}]</span> {a.requirement}
+                        <div className="text-muted" style={{ fontSize: 11 }}>
+                          {a.error
+                            ? `failed: ${a.error}`
+                            : a.spl
+                              ? <><span className="td-mono">{a.spl}</span> · {a.count ?? '?'} row{a.count === 1 ? '' : 's'}</>
+                              : 'not searched'}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+            </>
           )}
         </div>
       )}
