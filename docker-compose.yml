@@ -2,9 +2,10 @@
 #
 #   docker compose up -d --build     # http://localhost:3001
 #
-# nginx proxies /auth, /v1, /admin and /health to soc-core-api, and /llm to
-# soc-llm-server, so the browser stays on one origin and there is no CORS to
-# configure. Both must be reachable on soc-network or those paths 502.
+# nginx proxies /auth, /v1, /admin and /health to soc-core-api, so the browser
+# stays on one origin and there is no CORS to configure. It must be reachable
+# on soc-network or those paths 502. (There used to also be a /llm proxy to
+# soc-llm-server, for the agent run trace — see nginx.conf.)
 
 services:
   soc-frontend:

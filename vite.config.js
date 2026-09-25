@@ -10,13 +10,9 @@ export default defineConfig({
       '/v1': 'http://localhost:8081',
       '/admin': 'http://localhost:8081',
       '/health': 'http://localhost:8081',
-      // The LLM server, for the agent run trace. Rewritten because the path is
-      // only a prefix on this side — /llm/runs/x is /runs/x over there.
-      '/llm': {
-        target: 'http://localhost:8400',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/llm/, ''),
-      },
+      // No /llm proxy any more — the agent platform is Agent-Server now, not
+      // on this network, and its response carries no run id to fetch a trace
+      // back by. See nginx.conf for the fuller note.
     }
   }
 })

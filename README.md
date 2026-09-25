@@ -23,33 +23,43 @@ alert.
 
 ## Proxying
 
-nginx routes `/auth`, `/v1`, `/admin`, `/health` to `soc-core-api` and `/llm`
-to `soc-llm-server`, so the browser talks to one origin. `/llm` carries a 900s
-read timeout: nginx gives up at 60s by default, which is shorter than a single
-CPU-only agent run, and a cut-off request looks like the LLM server died.
+nginx routes `/auth`, `/v1`, `/admin`, `/health` to `soc-core-api`, so the
+browser talks to one origin. There used to also be `/llm`, proxied to
+`soc-llm-server` for the agent run trace; the agent platform is
+[Agent-Server](../Agent-Server/readme.md) now, which is not on this network and
+returns no run id to fetch a trace back by, so that route is gone rather than
+pointed at a container that does not exist here. `JobEvidence.jsx`'s trace
+section already only ever rendered when a run id was present, so it now just
+never does — nothing else on that page changed.
 
 ## Running the whole stack
 
 This repo runs on its own with the compose file above, which is enough to work
-on it. Running the SOC end to end takes all five repos, checked out side by
-side, and one script that writes the `.env` files:
+on it. Running the SOC end to end takes four repos, checked out side by side,
+and one script that writes the `.env` files — plus
+[Agent-Server](../Agent-Server/readme.md), run separately with its own compose
+(it is not one of the four; see `AI-Service/README.md`, "Agent-Server"):
 
 ```bash
-git clone https://gitlab.com/agentic-soc/backend.git     Backend
-git clone https://gitlab.com/agentic-soc/frontend.git    Frontend
-git clone https://gitlab.com/agentic-soc/ai-service.git  AI-Service
-git clone https://gitlab.com/agentic-soc/llm-server.git  LLM-Server
-git clone https://gitlab.com/agentic-soc/mcp-server.git  MCP-Server
+git clone https://gitlab.com/agentic-soc/backend.git      Backend
+git clone https://gitlab.com/agentic-soc/frontend.git     Frontend
+git clone https://gitlab.com/agentic-soc/ai-service.git   AI-Service
+git clone https://gitlab.com/agentic-soc/mcp-server.git   MCP-Server
+git clone https://gitlab.com/agentic-soc/Agent-Server.git Agent-Server
 
 cd Backend
-./deploy/dev-setup.sh                            # writes .env in all four
-docker compose -f deploy/dev.yml up -d --build   # http://localhost:3001
+./deploy/dev-setup.sh                            # writes .env in Backend, AI-Service, MCP-Server
+docker compose -f deploy/dev.yml --project-directory . up -d --build   # http://localhost:3001
+
+cd ../Agent-Server
+cp .env.example .env && docker compose up -d --build   # http://localhost:7100
 ```
 
 The script lives in Backend because three of the secrets it generates have to
 be identical in more than one repo — the tokens the connectors check — and
 they are the ones that break quietly: a mismatch is a 401 with nothing saying
-why. Generating them in one place is the whole point.
+why. Generating them in one place is the whole point. It does not touch
+Agent-Server, which manages its own `.env`.
 
 ---
 
@@ -61,13 +71,17 @@ Split out of the SOC-AI monorepo. The other pieces:
 | --- | --- |
 | `Backend` | API, queue worker, Postgres, Redis. The only writer to the database. |
 | `AI-Service` | The backend's stateless door to the agent platform. |
-| `LLM-Server` | Agents as data — model, prompt, tools — and the loop that runs them. |
 | `MCP-Server` | Tool servers for Splunk, ThreatQ and Confluence. |
 | `Frontend` | The analyst dashboard. |
 
+Plus [`Agent-Server`](../Agent-Server/readme.md) (DALL-M): agents as data —
+model, prompt, tools — and the loop that runs them. A separate system, its own
+network, reached by `AI-Service` over a URL rather than by container name.
+
 They meet on one Docker network called `soc-network`, created by whichever
 stack comes up first, and address each other by container name. Bring up
-`MCP-Server` and `LLM-Server` first: those are the ones the rest call.
+`MCP-Server` first: it is the one the rest call. Agent-Server is not on
+`soc-network` and brings itself up on its own.
 
 Each repo carries only the settings its own services read. In the monorepo one
 `.env` was shared by every container, which meant the Splunk connector's
