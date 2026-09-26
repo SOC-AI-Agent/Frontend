@@ -64,6 +64,11 @@ deploy_production:
     - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - echo "========== Build and start =========="
+    # soc-network is external (see docker-compose.yml) — shared with
+    # AI-service/Backend/MCP-Server's deploys, all on this same soc-deploy
+    # runner/host. Whichever of the four deploys first, creates it; idempotent
+    # so the other three deploying in any order or any number of times is fine.
+    - docker network create soc-network 2>/dev/null || true
     - docker compose up -d --build --wait
     - echo "========== Serving =========="
     - |

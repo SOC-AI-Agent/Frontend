@@ -16,6 +16,10 @@ services:
     networks: [soc-network]
 
 networks:
+  # Shared by AI-service/Backend/Frontend/MCP-Server's stacks. Created once,
+  # outside any one project (`docker network create soc-network`) — external
+  # here so this project doesn't believe it owns and can tear down a network
+  # the others are still using.
   soc-network:
+    external: true
     name: soc-network
-    driver: bridge
