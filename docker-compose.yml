@@ -1,19 +1,34 @@
 # The analyst dashboard.
 #
-#   docker compose up -d --build     # http://localhost:3001
+#   docker compose up -d --build     # http://localhost:3000
 #
-# nginx proxies /auth, /v1, /admin and /health to soc-core-api, so the browser
-# stays on one origin and there is no CORS to configure. It must be reachable
-# on soc-network or those paths 502. (There used to also be a /llm proxy to
-# soc-llm-server, for the agent run trace — see nginx.conf.)
+# The build uses the npm proxy set in the Dockerfile. Where that proxy is not
+# reachable (outside the office network), build with it switched off:
+#   docker compose build --build-arg NPM_PROXY= && docker compose up -d
+#
+# nginx proxies /auth, /v1, /admin and /health to the backend API
+# (BACKEND_HOST:BACKEND_PORT, default soc-core-api:8000), so the browser stays
+# on one origin and there is no CORS to configure. The backend is looked up on
+# soc-network per request: until it is up those paths answer 502, and the
+# dashboard itself still loads. BACKEND_HOST / BACKEND_PORT are read from the
+# environment (a CI variable in the deploy job, or ./.env).
 
 services:
   soc-frontend:
     build: .
+    environment:
+      BACKEND_HOST: ${BACKEND_HOST:-soc-core-api}
+      BACKEND_PORT: ${BACKEND_PORT:-8000}
     container_name: soc-frontend
-    ports: ["3001:80"]
+    ports: ["3000:80"]
     restart: unless-stopped
     networks: [soc-network]
+    # Docker keeps container logs forever by default; this caps them at 30MB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   # Shared by AI-service/Backend/Frontend/MCP-Server's stacks. Created once,

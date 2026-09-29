@@ -1,0 +1,8 @@
+# The build context. Without this, COPY . . sent the host's node_modules
+# (native binaries for the host OS) over the ones npm ci just installed, plus
+# .env and .git.
+node_modules
+dist
+.git
+.env
+*.env

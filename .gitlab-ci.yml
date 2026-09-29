@@ -1,7 +1,8 @@
 # Frontend — the analyst dashboard.
 #
-# No .env: the proxy targets are baked into nginx.conf at build time, so the
-# image is the configuration and nothing here holds a secret.
+# No .env and nothing secret. The npm proxy is set in the Dockerfile; the
+# deploy job's environment can carry BACKEND_HOST / BACKEND_PORT as CI
+# variables (the API nginx proxies to, default soc-core-api:8000).
 
 stages:
   - build
@@ -22,7 +23,10 @@ build_image:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   script:
-    - docker build -t soc-frontend:${CI_COMMIT_SHORT_SHA} .
+    # Proxy off: the Dockerfile's npm proxy is on the office network, which a
+    # gitlab.com shared runner can't reach. The deploy job builds on the
+    # office machine and keeps it.
+    - docker build --build-arg NPM_PROXY= -t soc-frontend:${CI_COMMIT_SHORT_SHA} .
   rules:
     - if: '$CI_COMMIT_BRANCH'
 

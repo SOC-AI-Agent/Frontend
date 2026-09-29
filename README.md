@@ -23,8 +23,23 @@ alert.
 
 ## Proxying
 
-nginx routes `/auth`, `/v1`, `/admin`, `/health` to `soc-core-api`, so the
-browser talks to one origin. There used to also be `/llm`, proxied to
+nginx routes `/auth`, `/v1`, `/admin`, `/health` to the backend API, so the
+browser talks to one origin. Where that is comes from `nginx.conf.template`,
+which the nginx image fills in at start:
+
+| Variable | Default | Used |
+| --- | --- | --- |
+| `BACKEND_HOST` | `soc-core-api` | at start — the API's container name on `soc-network` |
+| `BACKEND_PORT` | `8000` | at start |
+| `NPM_PROXY` | the office proxy (Dockerfile) | at build — npm goes through it. Off the office network, build with `docker compose build --build-arg NPM_PROXY=` |
+
+The dashboard is published on port 3000. Set `BACKEND_HOST` / `BACKEND_PORT`
+in the environment `docker compose` runs in: CI variables in the deploy job,
+or `./.env` locally. nginx looks the backend up per request
+(Docker's DNS), so it starts even when the backend is down — those paths
+answer 502 until it is up — and follows it to a new IP after a redeploy.
+
+There used to also be `/llm`, proxied to
 `soc-llm-server` for the agent run trace; the agent platform is
 [Agent-Server](../Agent-Server/readme.md) now, which is not on this network and
 returns no run id to fetch a trace back by, so that route is gone rather than
