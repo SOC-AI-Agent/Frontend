@@ -233,13 +233,19 @@ export default function JobEvidence() {
             <div key={i} style={{ borderTop: '1px solid var(--border-subtle)', padding: '14px 0' }}>
               <div style={{ fontSize: 13, marginBottom: 4 }}>{a.requirement}</div>
               <div className="text-muted" style={{ fontSize: 11, marginBottom: 8 }}>
-                {/* Which path ran it. The two differ by three orders of
-                    magnitude, so a requirement that quietly fell back to the
-                    agent is the one worth noticing. */}
-                {a.ranBy === 'backend' ? 'planned — run directly' : 'worked out by the query agent'}
+                {/* Who wrote the search. Splunk's Text-to-SPL now; the other
+                    two are what older jobs carry. */}
+                {{ splunk: "written by Splunk's Text-to-SPL", backend: 'planned — run directly' }[a.ranBy]
+                  ?? 'worked out by the query agent'}
                 {' · '}{(a.durationMs / 1000).toFixed(2)}s
                 {a.count != null && ` · ${a.count} result(s)`}
               </div>
+
+              {a.prompt && (
+                <div className="text-muted" style={{ fontSize: 11, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+                  asked: {a.prompt}
+                </div>
+              )}
 
               {a.spl ? (
                 <div className="code-block">{a.spl}</div>

@@ -171,6 +171,21 @@ export default function JobDetail() {
                           </span>
                         : r.because}
                   </div>
+                  {/* The details sent to Text-to-SPL with the question, and any the
+                      agent wrote that are not in the alert (not sent). */}
+                  {r.context && Object.keys(r.context).length > 0 && (
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      with{' '}
+                      {Object.entries(r.context).map(([k, v], n) => (
+                        <span key={k}>{n > 0 && ' · '}{k} <span className="td-mono">{v}</span></span>
+                      ))}
+                    </div>
+                  )}
+                  {r.droppedContext?.length > 0 && (
+                    <div className="text-warning" style={{ fontSize: 11, marginTop: 2 }}>
+                      not in the alert, left out: {r.droppedContext.join(' · ')}
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>
