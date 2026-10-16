@@ -2,33 +2,53 @@
 #
 # No .env and nothing secret. The npm proxy is set in the Dockerfile; the
 # deploy job's environment can carry BACKEND_HOST / BACKEND_PORT as CI
-# variables (the API nginx proxies to, default soc-core-api:8000).
+# variables (the API nginx proxies to, default soc-core-api:8000) and
+# FRONTEND_HOST_PORT (default 3002). Deploys from restructure, and from main
+# once restructure is merged there.
 
 stages:
   - build
   - test
   - deploy
 
+# The office proxy, the runner host's only way to the internet. A CI/CD
+# variable of the same name overrides this; an empty one turns the proxy off.
+variables:
+  BUILD_PROXY: "http://192.168.137.120:8080"
+
+
+# ── Reusable: the office proxy ──────────────────────────────────────────────
+#
+# Without it apt, npm, pip and prisma time out on the runner host ("Unable to
+# locate package"). Exported for the npm/pip a job runs itself, and handed to
+# `docker build` / `docker compose build` as PROXY_ARGS: a build does not
+# inherit the job's environment. These are Docker's predefined proxy build
+# args — no ARG line needed in any Dockerfile, and they stay out of the image's
+# history. Both spellings, because apt reads only the lowercase ones. Set inside
+# the script, after the checkout, so `git clone` never goes through the proxy.
+.proxy: &proxy |
+  p="${BUILD_PROXY:-}"
+  np="localhost,127.0.0.1"
+  export http_proxy="$p" https_proxy="$p" HTTP_PROXY="$p" HTTPS_PROXY="$p" \
+         no_proxy="$np" NO_PROXY="$np"
+  PROXY_ARGS="--build-arg http_proxy=$p --build-arg https_proxy=$p --build-arg HTTP_PROXY=$p --build-arg HTTPS_PROXY=$p --build-arg no_proxy=$np --build-arg NO_PROXY=$np"
+  if [ -n "$p" ]; then echo "proxy: on"; else echo "proxy: off (BUILD_PROXY is empty)"; fi
 
 build_image:
   stage: build
   image: docker:latest
   tags:
-    - test
-  # A shared runner has no Docker daemon of its own, so one is started
-  # alongside. The deploy job does the opposite — it wants the daemon of the
-  # host it is deploying to — which is why this is set per job rather than
-  # once at the top.
-  services:
-    - docker:dind
+    - llm
+  # Builds on the runner host's own Docker daemon, through the socket the llm
+  # runner mounts — no docker:dind. One fixed tag, overwritten each run: the
+  # host is the production machine, and an image per commit would pile up on
+  # its disk.
   variables:
-    DOCKER_HOST: tcp://docker:2375
+    DOCKER_HOST: unix:///var/run/docker.sock
     DOCKER_TLS_CERTDIR: ""
   script:
-    # Proxy off: the Dockerfile's npm proxy is on the office network, which a
-    # gitlab.com shared runner can't reach. The deploy job builds on the
-    # office machine and keeps it.
-    - docker build --build-arg NPM_PROXY= -t soc-frontend:${CI_COMMIT_SHORT_SHA} .
+    - *proxy
+    - docker build $PROXY_ARGS -t soc-frontend:ci .
   rules:
     - if: '$CI_COMMIT_BRANCH'
 
@@ -36,8 +56,9 @@ code_test:
   stage: test
   image: node:20
   tags:
-    - test
+    - llm
   script:
+    - *proxy
     - npm ci
     # A build failure here is a blank dashboard in production, and it is the
     # only check that catches a bad import before then.
@@ -54,8 +75,10 @@ deploy_production:
   # container and take it away again.
   tags:
     # `llm` is the production runner: the one installed on the machine that
-    # hosts the stack, so the runner IS the deployment target. Build and test
-    # jobs run on `test`; the same runner carries both tags today.
+    # hosts the stack, so the runner IS the deployment target. Every job in
+    # this file runs on it — a docker executor with the host's
+    # /var/run/docker.sock mounted. The `test` runner is a shell executor with
+    # no docker, so nothing here uses it.
     - llm
   variables:
     # The socket of the machine this runner is on: the deployment target.
@@ -63,26 +86,110 @@ deploy_production:
     DOCKER_TLS_CERTDIR: ""
   environment:
     name: production
-    # The address GitLab shows and links to. It is where the service actually
-    # answers, so it comes from a variable — localhost here would be a link to
-    # the runner, which is not where anyone reads this from.
-    url: '$FRONTEND_URL'
+    # The address GitLab shows and links to: the one the Address step found
+    # answering, handed over in deploy.env.
+    url: '$DYNAMIC_ENVIRONMENT_URL'
+  # deploy.env holds that one URL and nothing else.
+  artifacts:
+    reports:
+      dotenv: deploy.env
+  # restructure carries this dashboard (the one on port 3002 that talks to the
+  # NestJS backend); main, once it is merged there. Each branch's pipeline
+  # reads its own copy of this file, so main deploys this way only after the
+  # merge. Both deploy the same container, soc-dashboard: the last one wins.
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "restructure" || $CI_COMMIT_BRANCH == "main"'
   script:
-    - echo "========== Build and start =========="
-    # soc-network is external (see docker-compose.yml) — shared with
-    # AI-service/Backend/MCP-Server's deploys, all on this same production
-    # runner/host. Whichever of the four deploys first, creates it; idempotent
-    # so the other three deploying in any order or any number of times is fine.
-    - docker network create soc-network 2>/dev/null || true
-    - docker compose up -d --build --wait
-    - echo "========== Serving =========="
+    # Fixed rather than taken from the checkout directory, whose name GitLab
+    # picks: the port check below tells this project's container from
+    # another stack's by it.
+    - export COMPOSE_PROJECT_NAME=frontend
+
+    - echo "========== 0. Host port =========="
+    # Before anything is built: the host port this publishes (3002, or
+    # FRONTEND_HOST_PORT), and whether a container of another stack holds it.
+    # `up` would say only "port is already allocated", after the build. The
+    # FastAPI-era dashboards have 3000 (soc-frontend) and 3001
+    # (soc-frontend-dev) on this host; Backend's inspect_ports job names a free
+    # port if 3002 is ever taken too.
     - |
+      ports=$(docker compose config --format json | sed -n 's/.*"published": *"*\([0-9][0-9]*\).*/\1/p' | sort -u)
+      echo "FRONTEND_HOST_PORT in this job: ${FRONTEND_HOST_PORT:-not set (3002)}"
+      echo "published by this stack: $(echo $ports)"
+      busy=""
+      for port in $ports; do
+        holder=$(docker ps --filter "publish=$port" --format '{{.Names}} ({{.Label "com.docker.compose.project"}})' \
+          | grep -v "($COMPOSE_PROJECT_NAME)\$" | tr '\n' ' ' || true)
+        if [ -n "$holder" ]; then echo "  $port: held by $holder"; busy="$busy $port"; fi
+      done
+      if [ -n "$busy" ]; then
+        echo "Set the CI variable FRONTEND_HOST_PORT to a free port (Backend's inspect_ports names one)."
+        exit 1
+      fi
+      echo "  free (or this stack's own)"
+
+    - echo "========== 1. Build and start =========="
+    # soc-network is external (see docker-compose.yml) — shared with
+    # AI-Service's and Backend's deploys, all on this same production
+    # runner/host. Whichever deploys first creates it; idempotent so the others
+    # deploying in any order or any number of times is fine.
+    - docker network create soc-network 2>/dev/null || true
+    - *proxy
+    - docker compose build $PROXY_ARGS
+    - docker compose up -d --wait
+
+    - echo "========== 2. Serving =========="
+    - |
+      serving=""
       for i in $(seq 1 20); do
         if docker compose exec -T soc-frontend wget -q -O /dev/null http://localhost/ 2>/dev/null; then
-          echo "serving"; exit 0
+          serving=yes; break
         fi
         sleep 3
       done
-      echo "the dashboard did not start"; docker compose logs --tail 40 soc-frontend; exit 1
+      if [ -z "$serving" ]; then
+        echo "the dashboard did not start"; docker compose logs --tail 40 soc-frontend; exit 1
+      fi
+      echo "serving inside the container"
+
+    - echo "========== 3. Address and backend =========="
+    # Where the dashboard answers from outside — this host's address and the
+    # published port, the way a browser asks — and whether the backend answers
+    # through it: /health goes through this nginx to BACKEND_HOST:BACKEND_PORT
+    # (soc-core-api:8000) on soc-network, the same way every API call from the
+    # browser does. The dashboard not answering at that address fails the
+    # deploy; the backend not answering through it is reported, not fatal:
+    # the backend may simply deploy after this.
+    #
+    # The IP is the one this host sends from on its default route, read from a
+    # throwaway container on the host's network; the CI variable DEPLOY_HOST
+    # overrides it.
+    - |
+      port=$(docker compose port soc-frontend 80 | sed -n '1s/.*://p')
+      host="${DEPLOY_HOST:-}"
+      if [ -z "$host" ]; then
+        host=$(docker run --rm --network host --entrypoint sh "$CI_JOB_IMAGE" -c '
+          { ip route get 1.1.1.1 2>/dev/null | sed -n "s/.* src \([0-9.]*\).*/\1/p"
+            ip -4 -o addr show scope global | grep -v -E " (docker0|br-|veth)" | sed -n "s/.* inet \([0-9.]*\).*/\1/p"
+          } | head -n 1')
+      fi
+      url="http://$host:$port"
+      ask() { docker run --rm --network host --entrypoint wget "$CI_JOB_IMAGE" -qO- -T 10 "$1"; }
+      echo "Dashboard    $url"
+      echo "  API docs   $url/docs   (the backend's, through this nginx)"
+      if ! ask "$url/" >/dev/null; then
+        echo "$url does not answer, though the dashboard serves inside its container:"
+        echo "the port is published but not reachable at this address. Set DEPLOY_HOST if"
+        echo "browsers reach this host by another name or interface."
+        exit 1
+      fi
+      echo "  answers"
+      echo "DYNAMIC_ENVIRONMENT_URL=$url" > deploy.env
+      backend="${BACKEND_HOST:-soc-core-api}:${BACKEND_PORT:-8000}"
+      if answer=$(ask "$url/health" 2>&1); then
+        echo "Backend      $backend answers through the dashboard: $answer"
+      else
+        echo "Backend      $backend does NOT answer through the dashboard (${answer:-no answer})."
+        echo "             Logins and jobs will fail until it does: deploy Backend, and check"
+        echo "             that soc-core-api is running on soc-network."
+      fi

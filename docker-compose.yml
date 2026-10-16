@@ -1,6 +1,6 @@
 # The analyst dashboard.
 #
-#   docker compose up -d --build     # http://localhost:3000
+#   docker compose up -d --build     # http://localhost:3002
 #
 # The build uses the npm proxy set in the Dockerfile. Where that proxy is not
 # reachable (outside the office network), build with it switched off:
@@ -19,8 +19,12 @@ services:
     environment:
       BACKEND_HOST: ${BACKEND_HOST:-soc-core-api}
       BACKEND_PORT: ${BACKEND_PORT:-8000}
-    container_name: soc-frontend
-    ports: ["3000:80"]
+    # Neither the name soc-frontend nor host ports 3000/3001: on the production
+    # host the FastAPI-era stack and its dev copy have those (container names
+    # are host-wide). FRONTEND_HOST_PORT from the environment (a CI variable)
+    # moves it if 3002 is ever taken too.
+    container_name: soc-dashboard
+    ports: ["${FRONTEND_HOST_PORT:-3002}:80"]
     restart: unless-stopped
     networks: [soc-network]
     # Docker keeps container logs forever by default; this caps them at 30MB.

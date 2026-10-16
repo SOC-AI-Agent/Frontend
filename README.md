@@ -3,7 +3,7 @@
 The analyst dashboard. React and Vite, served by nginx.
 
 ```bash
-docker compose up -d --build     # http://localhost:3001
+docker compose up -d --build     # http://localhost:3002
 ```
 
 ## What it shows
@@ -33,7 +33,11 @@ which the nginx image fills in at start:
 | `BACKEND_PORT` | `8000` | at start |
 | `NPM_PROXY` | the office proxy (Dockerfile) | at build — npm goes through it. Off the office network, build with `docker compose build --build-arg NPM_PROXY=` |
 
-The dashboard is published on port 3000. Set `BACKEND_HOST` / `BACKEND_PORT`
+The dashboard is published on port 3002 (`FRONTEND_HOST_PORT` moves it). The
+`deploy_production` job deploys it from the `restructure` branch, and from
+`main` once that is merged. Its last step prints the address and asks the
+backend's `/health` through this nginx, so a dashboard that cannot reach the
+API is caught at deploy. Set `BACKEND_HOST` / `BACKEND_PORT`
 in the environment `docker compose` runs in: CI variables in the deploy job,
 or `./.env` locally. nginx looks the backend up per request
 (Docker's DNS), so it starts even when the backend is down — those paths
@@ -64,7 +68,7 @@ git clone https://gitlab.com/agentic-soc/Agent-Server.git Agent-Server
 
 cd Backend
 ./deploy/dev-setup.sh                            # writes .env in Backend, AI-Service, MCP-Server
-docker compose -f deploy/dev.yml --project-directory . up -d --build   # http://localhost:3001
+docker compose -f deploy/dev.yml --project-directory . up -d --build   # http://localhost:3002
 
 cd ../Agent-Server
 cp .env.example .env && docker compose up -d --build   # http://localhost:7100
