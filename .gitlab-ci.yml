@@ -139,18 +139,26 @@ deploy_production:
     - docker compose up -d --wait
 
     - echo "========== 2. Serving =========="
+    # Asked from a throwaway container on soc-network, at the dashboard's
+    # container name — the way the rest of the stack reaches it — rather than
+    # with a tool inside the nginx image, which need not have one (it is not
+    # ours). The last error is shown, not swallowed.
     - |
-      serving=""
+      serving=""; err=""
       for i in $(seq 1 20); do
-        if docker compose exec -T soc-frontend wget -q -O /dev/null http://localhost/ 2>/dev/null; then
+        if err=$(docker run --rm --network soc-network --entrypoint wget "$CI_JOB_IMAGE" \
+             -q -O /dev/null -T 5 http://soc-dashboard/ 2>&1); then
           serving=yes; break
         fi
         sleep 3
       done
       if [ -z "$serving" ]; then
-        echo "the dashboard did not start"; docker compose logs --tail 40 soc-frontend; exit 1
+        echo "the dashboard does not answer on soc-network at http://soc-dashboard/: ${err:-no answer}"
+        docker compose ps
+        docker compose logs --tail 40 soc-frontend
+        exit 1
       fi
-      echo "serving inside the container"
+      echo "serving on soc-network"
 
     - echo "========== 3. Address and backend =========="
     # Where the dashboard answers from outside — this host's address and the
