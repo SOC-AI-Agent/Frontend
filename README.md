@@ -33,6 +33,12 @@ which the nginx image fills in at start:
 | `BACKEND_PORT` | `8000` | at start |
 | `NPM_PROXY` | the office proxy (Dockerfile) | at build — npm goes through it. Off the office network, build with `docker compose build --build-arg NPM_PROXY=` |
 
+`npm run dev` (port 5173) forwards the same API paths to the production
+backend, `http://10.40.35.18:8082`, so the dashboard can be worked on against
+real data from a machine that reaches that port; `BACKEND_URL` points it
+elsewhere (`BACKEND_URL=http://localhost:8082 npm run dev`). This is
+`vite.config.js`, which the deployed dashboard does not use.
+
 The dashboard is published on port 3002 (`FRONTEND_HOST_PORT` moves it). The
 `deploy_production` job deploys it from the `restructure` branch, and from
 `main` once that is merged. Its last step prints the address and asks the
