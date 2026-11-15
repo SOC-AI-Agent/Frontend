@@ -165,10 +165,12 @@ export default function JobDetail() {
                       ? <>searches <span className="td-mono">{r.fields.join(' / ')}</span>
                           {r.index && <> in <span className="td-mono">{r.index}</span></>}
                           {r.sourcetype && <>/<span className="td-mono">{r.sourcetype}</span></>}
+                          {r.aimedBy === 'probe' && <> · found by probing Splunk</>}
+                          {r.aimedBy === 'cim' && <> · common field name</>}
                         </>
                       : r.indicator_type || r.indicatorType
                         ? <span className="text-warning">
-                            not aimed — the catalogue has no field for a {r.indicatorType ?? r.indicator_type} here
+                            not aimed — no field for a {r.indicatorType ?? r.indicator_type} here; searched as a quoted term
                           </span>
                         : r.because}
                   </div>
