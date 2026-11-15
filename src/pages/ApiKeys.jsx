@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
 import useAuthStore from '../stores/authStore'
+import { copyToClipboard } from '../utils/clipboard'
 
 export default function ApiKeys() {
   const [keys, setKeys] = useState([])
@@ -78,9 +79,10 @@ export default function ApiKeys() {
   }
 
   const copy = async (text) => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (await copyToClipboard(text)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const paginatedKeys = keys.slice(page * limit, (page + 1) * limit)

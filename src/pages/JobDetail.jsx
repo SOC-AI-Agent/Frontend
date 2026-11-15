@@ -4,6 +4,7 @@ import Layout from '../components/Layout'
 import StatusBadge from '../components/StatusBadge'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
+import { copyToClipboard } from '../utils/clipboard'
 
 /**
  * What each lookup state means, in words an analyst can act on — including
@@ -49,7 +50,7 @@ export default function JobDetail() {
   }, [id])
 
   const fmt = (d) => d ? new Date(d).toLocaleString() : '—'
-  const copy = (text) => navigator.clipboard.writeText(text)
+  const copy = (text) => copyToClipboard(text)
 
   // Only offered when there is something stored to run and nothing running.
   // Re-running would spend the same minutes again and overwrite the answers,
