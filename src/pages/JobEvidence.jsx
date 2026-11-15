@@ -235,8 +235,12 @@ export default function JobEvidence() {
               <div className="text-muted" style={{ fontSize: 11, marginBottom: 8 }}>
                 {/* Who wrote the search. Splunk's Text-to-SPL now; the other
                     two are what older jobs carry. */}
-                {{ splunk: "written by Splunk's Text-to-SPL", backend: 'planned — run directly' }[a.ranBy]
-                  ?? 'worked out by the query agent'}
+                {a.writtenBy === 'agent'
+                  ? `SPL written by ${a.splAgent ?? 'soc-spl-writer'}`
+                  : a.writtenBy
+                    ? `SPL written by the Splunk connector (${a.writtenBy})`
+                    : { splunk: "written by Splunk's Text-to-SPL", backend: 'planned — run directly' }[a.ranBy]
+                      ?? 'worked out by the query agent'}
                 {' · '}{(a.durationMs / 1000).toFixed(2)}s
                 {a.count != null && ` · ${a.count} result(s)`}
               </div>
@@ -256,6 +260,12 @@ export default function JobEvidence() {
               )}
 
               {a.error && <div className="alert alert-error" style={{ marginTop: 8 }}>{a.error}</div>}
+
+              {a.draftError && (
+                <div className="text-warning" style={{ fontSize: 11, marginTop: 6 }}>
+                  {a.splAgent ?? 'soc-spl-writer'}'s draft was dropped, so the connector wrote this search: {a.draftError}
+                </div>
+              )}
 
               {a.runId && (
                 <div className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>

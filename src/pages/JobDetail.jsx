@@ -234,6 +234,12 @@ export default function JobDetail() {
                     : <div className="code-block">{a.answer}</div>}
                   <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
                     {(a.durationMs / 1000).toFixed(1)}s
+                    {a.writtenBy === 'agent' && <> · SPL by <span className="td-mono">{a.splAgent ?? 'soc-spl-writer'}</span></>}
+                    {a.writtenBy && a.writtenBy !== 'agent' && (
+                      <span title={a.draftError || undefined}>
+                        {' · '}SPL by connector{a.draftError ? ` (${a.splAgent ?? 'soc-spl-writer'} draft dropped)` : ''}
+                      </span>
+                    )}
                     {a.runId && <> · <Link to={`/jobs/${id}/evidence`}>trace</Link></>}
                   </div>
                 </div>
