@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import StatusBadge from '../components/StatusBadge'
+import SplunkResults from '../components/SplunkResults'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { copyToClipboard } from '../utils/clipboard'
@@ -233,7 +234,7 @@ export default function JobDetail() {
                   </div>
                   {a.error
                     ? <div className="text-danger" style={{ fontSize: 12 }}>{a.error}</div>
-                    : <div className="code-block">{a.answer}</div>}
+                    : <SplunkResults answer={a} />}
                   <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
                     {(a.durationMs / 1000).toFixed(1)}s
                     {a.writtenBy === 'agent' && <> · SPL by <span className="td-mono">{a.splAgent ?? 'soc-spl-writer'}</span></>}
