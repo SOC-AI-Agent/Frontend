@@ -232,6 +232,17 @@ export default function JobDetail() {
                       ? `searched ${a.fields.join(' / ')}${a.index ? ` in ${a.index}` : ''}${a.sourcetype ? `/${a.sourcetype}` : ''}`
                       : 'no field was named for this — an empty result may mean the wrong one was searched'}
                   </div>
+                  {/* The search that ran, before what it found: the rows are only
+                      as good as the query, and this is where it is checked. */}
+                  {a.spl && (
+                    <div className="spl-block">
+                      <div className="spl-head">
+                        <span className="text-muted">SPL{a.writtenBy === 'agent' ? ` · ${a.splAgent ?? 'soc-spl-writer'}` : a.writtenBy ? ` · ${a.writtenBy}` : ''}</span>
+                        <button type="button" className="sr-link" onClick={() => copyToClipboard(a.spl)}>copy</button>
+                      </div>
+                      <code>{a.spl}</code>
+                    </div>
+                  )}
                   {a.error
                     ? <div className="text-danger" style={{ fontSize: 12 }}>{a.error}</div>
                     : <SplunkResults answer={a} />}
