@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Layout from '../components/Layout'
+import PlaybookMatchCard from '../components/PlaybookMatchCard'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
 
@@ -99,6 +100,8 @@ export default function JobEvidence() {
               )
             ) : <p className="text-muted" style={{ fontSize: 13 }}>Not recorded.</p>}
           </div>
+
+          <PlaybookMatchCard playbook={e.playbook} />
 
           {/* ── indicators ───────────────────────────────────────────────── */}
           <div className="card" style={{ marginBottom: 16 }}>

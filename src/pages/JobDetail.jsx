@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import StatusBadge from '../components/StatusBadge'
 import SplunkResults from '../components/SplunkResults'
+import PlaybookMatchCard from '../components/PlaybookMatchCard'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
 import { copyToClipboard } from '../utils/clipboard'
@@ -120,6 +121,9 @@ export default function JobDetail() {
           ))}
         </div>
       </div>
+
+      {/* Playbook / Use Case reference */}
+      {job.evidence && <PlaybookMatchCard playbook={job.evidence.playbook} />}
 
       {/* Error */}
       {job.error_message && (
