@@ -260,6 +260,17 @@ export default function JobDetail() {
                     )}
                     {a.runId && <> · <Link to={`/jobs/${id}/evidence`}>trace</Link></>}
                   </div>
+                  {a.otherSearch && (
+                    <div className={a.otherSearch.writtenBy === 'agent' ? 'text-warning' : 'text-muted'} style={{ fontSize: 11, marginTop: 4 }}>
+                      {a.otherSearch.writtenBy === 'agent'
+                        ? `${a.splAgent ?? 'soc-spl-writer'}'s search found nothing; the connector's search above found these rows.`
+                        : "Checked twice: the connector's own search found nothing either."}
+                      <details style={{ marginTop: 2 }}>
+                        <summary style={{ cursor: 'pointer' }}>the other search</summary>
+                        <div className="code-block">{a.otherSearch.spl}</div>
+                      </details>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

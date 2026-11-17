@@ -270,6 +270,15 @@ export default function JobEvidence() {
                 </div>
               )}
 
+              {a.otherSearch && (
+                <div className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
+                  {a.otherSearch.writtenBy === 'agent'
+                    ? `${a.splAgent ?? 'soc-spl-writer'}'s search found nothing, so the connector's search above is the answer. The agent's was:`
+                    : "Found nothing, and the connector's own search found nothing either:"}
+                  <div className="code-block">{a.otherSearch.spl}</div>
+                </div>
+              )}
+
               {a.runId && (
                 <div className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
                   agent run <span className="td-mono">{a.runId}</span>
