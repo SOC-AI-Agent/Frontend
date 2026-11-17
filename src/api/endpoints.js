@@ -70,6 +70,12 @@ export const endpoints = {
 
   /** GET — job counts, avg processing time, token totals */
   stats: '/admin/stats',
+  playbooks: {
+    /** GET — playbook index in soc-ai/Qdrant, and whether Confluence is configured */
+    status: '/admin/playbooks',
+    /** POST — admin only: read Confluence now and re-index (embeds into Qdrant) */
+    sync: '/admin/playbooks/sync',
+  },
 }
 
 export default endpoints

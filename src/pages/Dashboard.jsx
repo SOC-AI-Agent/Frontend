@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import StatusBadge from '../components/StatusBadge'
+import PlaybookIndexCard from '../components/PlaybookIndexCard'
 import client from '../api/client'
 import { endpoints } from '../api/endpoints'
 
@@ -56,6 +57,8 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          <PlaybookIndexCard />
 
           <div className="card">
             <div className="card-header">
