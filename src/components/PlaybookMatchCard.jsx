@@ -1,13 +1,18 @@
+// A reference given when no playbook matches: the generic triage playbook.
+const REFERENCE_ONLY = new Set(['default'])
+
 export default function PlaybookMatchCard({ playbook: pb }) {
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="card-header">
         <span className="card-title">📖 Referenced Use Case / Playbook</span>
         {pb && (
-          <span className={`badge ${pb.matched ? 'badge-completed' : 'badge-pending'}`}>
-            {pb.matched
-              ? `matched via ${pb.how}${typeof pb.similarity === 'number' ? ` (${(pb.similarity * 100).toFixed(0)}%)` : ''}`
-              : `not matched (${pb.how || 'miss'})`}
+          <span className={`badge ${!pb.matched ? 'badge-pending' : REFERENCE_ONLY.has(pb.how) ? 'badge-processing' : 'badge-completed'}`}>
+            {!pb.matched
+              ? `not matched (${pb.how || 'miss'})`
+              : pb.how === 'default'
+                ? 'generic triage (no specific playbook)'
+                : `matched via ${pb.how}${typeof pb.similarity === 'number' ? ` (${(pb.similarity * 100).toFixed(0)}%)` : ''}`}
           </span>
         )}
       </div>
@@ -43,6 +48,10 @@ export default function PlaybookMatchCard({ playbook: pb }) {
             </div>
           )}
         </div>
+      )}
+
+      {pb?.matched && REFERENCE_ONLY.has(pb.how) && pb.note && (
+        <div className="alert alert-warning" style={{ marginTop: 10, fontSize: 12 }}>{pb.note}</div>
       )}
 
       {pb && !pb.matched && (
